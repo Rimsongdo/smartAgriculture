@@ -2,9 +2,11 @@
 const express = require('express');
 const WebSocket = require('ws');
 const bodyParser = require('body-parser');
+const cors=require('cors')
 
 const app = express();
 const port = 3000;
+app.use(cors())
 
 // Middleware to parse JSON bodies
 app.use(bodyParser.json());
@@ -35,6 +37,7 @@ app.get('/', (req, res) => {
 
 app.post('/sensor-data', (req, res) => {
   const data = req.body;
+  console.log('data received')
 
   try {
     // Convert data to JSON string if it's an object
