@@ -1,19 +1,24 @@
-// server.js
+
 const express = require('express');
-const http = require('http');
 const WebSocket = require('ws');
+const bodyParser = require('body-parser');
 
 const app = express();
-const server = http.createServer(app);
+const port = 3000;
+
+// Middleware to parse JSON bodies
+app.use(bodyParser.json());
+
+// Create an HTTP server
+const server = app.listen(port, () => {
+  console.log(`Server is running on http://localhost:${port}`);
+});
+
+// Create a WebSocket server
 const wss = new WebSocket.Server({ server });
 
-// Serve static files from the React app
-app.use(express.static('client/build'));
-
-let temperature = 20; // Starting temperature
-
 wss.on('connection', (ws) => {
-  console.log('New client connected');
+  console.log('Client connected');
 
   ws.on('message', (message) => {
     console.log(`Received message => ${message}`);
@@ -22,18 +27,28 @@ wss.on('connection', (ws) => {
   ws.on('close', () => {
     console.log('Client disconnected');
   });
-
-  // Send temperature data to the client every 30 seconds
-  const interval = setInterval(() => {
-    temperature += 1;
-    ws.send(JSON.stringify({ temperature }));
-  }, 30000);
-
-  // Clear interval when client disconnects
-  ws.on('close', () => {
-    clearInterval(interval);
-  });
 });
 
-const PORT = process.env.PORT || 8000;
-server.listen(PORT, () => console.log(`Server started on port ${PORT}`));
+app.get('/', (req, res) => {
+  res.send('WebSocket server is running');
+});
+
+app.post('/sensor-data', (req, res) => {
+  const data = req.body;
+
+  try {
+    // Convert data to JSON string if it's an object
+    const message = typeof data === 'object' ? JSON.stringify(data) : data;
+
+    wss.clients.forEach(client => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(message);
+      }
+    });
+
+    res.status(200).send('Data sent to WebSocket clients');
+  } catch (error) {
+    console.error('Error sending data to WebSocket clients:', error);
+    res.status(500).send('Internal Server Error');
+  }
+});
